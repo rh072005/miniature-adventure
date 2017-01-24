@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace SwashbuckleAspNetApiVersioningExample
 {
@@ -22,7 +23,8 @@ namespace SwashbuckleAspNetApiVersioningExample
             }
 
             //This is the line that ends up with the wrong version
-            var values = apiDescription.RelativePath.Split('/').Select(v => v.Replace("v{version}", version));
+            var versionRegex = new Regex("^(v\\d|v{version})$");
+            var values = apiDescription.RelativePath.Split('/').Select(v => versionRegex.Replace(v, version));
             apiDescription.RelativePath = string.Join("/", values);
             var versionParameter = apiDescription.ParameterDescriptions.SingleOrDefault(p => p.Name == "version");
 
