@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +24,6 @@ namespace SwashbuckleAspNetApiVersioningExample
                 return false;
             }
 
-            //This is the line that ends up with the wrong version
             var versionRegex = new Regex("^(v\\d|v{version})$");
             var values = apiDescription.RelativePath.Split('/').Select(v => versionRegex.Replace(v, version));
             apiDescription.RelativePath = string.Join("/", values);
@@ -45,26 +46,17 @@ namespace SwashbuckleAspNetApiVersioningExample
         {
             var controllers = GetSubClasses<Controller>();
             var versionList = new List<string>();
-            var versionedApiControllers = controllers.Select(x => x.CustomAttributes?.Where(y => y.AttributeType == typeof(ApiVersionAttribute))
-                .Select(z => z.ConstructorArguments)).ToList();
-
-            foreach(var versionedApiController in versionedApiControllers)
-            {
-                var versions = versionedApiController.Select(x => x.FirstOrDefault().Value?.ToString()).ToList();
-                versionList.AddRange(versions);
-            }
-
+            var versionAttributes = controllers.Select(x => x.GetTypeInfo().GetCustomAttributes<ApiVersionAttribute>());
+            versionList = versionAttributes.SelectMany(x => x.Select(y => y.Versions.FirstOrDefault().ToString())).ToList();
             versionList = versionList.Distinct().OrderByDescending(x => x).ToList();
             return versionList;
         }
 
         public static List<string> GetApiVersionsForController(Type controllerType)
-        {            
-            var versionList = new List<string>();            
-            var versionedApiController = controllerType.CustomAttributes?.Where(x => x.AttributeType == typeof(ApiVersionAttribute))
-                .Select(z => z.ConstructorArguments).ToList();
-            var versions = versionedApiController.Select(x => x.FirstOrDefault().Value?.ToString()).ToList();
-            versionList.AddRange(versions);
+        {
+            var versionList = new List<string>();
+            var versionAttributes = controllerType.GetTypeInfo().GetCustomAttributes<ApiVersionAttribute>();
+            versionList = versionAttributes.Select(x => x.Versions.FirstOrDefault().ToString()).ToList();
             return versionList;
         }
 

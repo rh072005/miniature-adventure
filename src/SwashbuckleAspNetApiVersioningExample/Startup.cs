@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Swagger;
 using System.Reflection;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace SwashbuckleAspNetApiVersioningExample
 {
@@ -20,10 +22,10 @@ namespace SwashbuckleAspNetApiVersioningExample
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
-                .AddEnvironmentVariables();
-            
-            Configuration = builder.Build();
-            _versions = SwaggerVersioning.GetAllApiVersions();            
+                .AddEnvironmentVariables();            
+
+            Configuration = builder.Build();            
+            //_versions = SwaggerVersioning.GetAllApiVersions();            
         }
 
         public IConfigurationRoot Configuration { get; }
@@ -32,11 +34,25 @@ namespace SwashbuckleAspNetApiVersioningExample
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
-            services.AddMvc(c =>            
+
+            //https://github.com/aspnet/Mvc/issues/4897#issuecomment-228093609
+            //http://stackoverflow.com/questions/36680933/discovering-generic-controllers-in-asp-net-core#answer-37789854
+
+            var mvc = services.AddMvc(c =>            
                 c.Conventions.Add(new ApiExplorerGroupPerVersionConvention())                
             );
+                       
 
-            services.AddApiVersioning();
+            var controllerFeature = new ControllerFeature();
+            mvc.PartManager.PopulateFeature(controllerFeature);
+
+            foreach (var controller in controllerFeature.Controllers)
+            {
+            }
+
+            _versions = SwaggerVersioning.GetAllApiVersions();
+
+            services.AddApiVersioning();                                  
 
             services.AddSwaggerGen(c =>
             {
@@ -57,7 +73,7 @@ namespace SwashbuckleAspNetApiVersioningExample
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
-            app.UseMvc();
+            app.UseMvc();                      
 
             app.UseSwagger(); 
             app.UseSwaggerUi(c =>
@@ -67,11 +83,6 @@ namespace SwashbuckleAspNetApiVersioningExample
                     c.SwaggerEndpoint(string.Format($"/swagger/v{version}/swagger.json"), string.Format($"V{version} Docs"));
                 }
             });
-        }
-
-        private static IEnumerable<Type> GetSubClasses<T>()
-        {
-            return Assembly.GetCallingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(T))).ToList();
         }
     }
 }
