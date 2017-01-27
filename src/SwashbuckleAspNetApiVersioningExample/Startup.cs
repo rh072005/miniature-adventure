@@ -1,21 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.Swagger;
-using System.Reflection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Controllers;
+using SwashbuckleAspNetVersioningShim;
 
 namespace SwashbuckleAspNetApiVersioningExample
 {
     public class Startup
     {
-        private List<string> _versions;
+        private IMvcBuilder _mvcBuilder;
+        private SwaggerVersioner _swaggerVersioning = new SwaggerVersioner();
+
         public Startup(IHostingEnvironment env)
         {
             var builder = new ConfigurationBuilder()
@@ -32,30 +28,17 @@ namespace SwashbuckleAspNetApiVersioningExample
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Add framework services.
-
             //https://github.com/aspnet/Mvc/issues/4897#issuecomment-228093609
             //http://stackoverflow.com/questions/36680933/discovering-generic-controllers-in-asp-net-core#answer-37789854
 
-            var mvc = services.AddMvc(c =>            
-                c.Conventions.Add(new ApiExplorerGroupPerVersionConvention())                
+            _mvcBuilder = services.AddMvc(c =>            
+                c.Conventions.Add(new ApiExplorerGroupPerVersionConvention(_swaggerVersioning))                
             );                     
-                      
-            _versions = SwaggerVersioning.GetAllApiVersions(mvc.PartManager);
 
-            services.AddApiVersioning();                                  
-
+            services.AddApiVersioning();                                
             services.AddSwaggerGen(c =>
             {
-                c.DocInclusionPredicate((version, apiDescription) =>
-                {
-                    return SwaggerVersioning.SetDocInclusions(version, apiDescription);
-                });
-
-                foreach(var version in _versions)
-                {
-                    c.SwaggerDoc(string.Format($"v{version}"), new Info { Version = version, Title = string.Format($"API V{version}") });
-                }            
+                _swaggerVersioning.ConfigureSwaggerGen(c, _mvcBuilder.PartManager);
             });
         }
 
@@ -64,15 +47,12 @@ namespace SwashbuckleAspNetApiVersioningExample
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
-            app.UseMvc();                      
+            app.UseMvc();
 
             app.UseSwagger(); 
             app.UseSwaggerUi(c =>
-            {                   
-                foreach(var version in _versions)
-                {
-                    c.SwaggerEndpoint(string.Format($"/swagger/v{version}/swagger.json"), string.Format($"V{version} Docs"));
-                }
+            {
+                _swaggerVersioning.ConfigureSwaggerUi(c, _mvcBuilder.PartManager);
             });
         }
     }

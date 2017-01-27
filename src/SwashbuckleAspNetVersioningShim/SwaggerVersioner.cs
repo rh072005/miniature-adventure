@@ -2,17 +2,19 @@
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Swashbuckle.AspNetCore.Swagger;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace SwashbuckleAspNetApiVersioningExample
+namespace SwashbuckleAspNetVersioningShim
 {
-    public static class SwaggerVersioning
+    public class SwaggerVersioner
     {
-        public static bool SetDocInclusions(string version, ApiDescription apiDescription)
+        public bool SetDocInclusions(string version, ApiDescription apiDescription)
         {
             var versions = apiDescription.GroupName?.Split('#');
             if (versions == null)
@@ -42,7 +44,7 @@ namespace SwashbuckleAspNetApiVersioningExample
             return true;
         }
 
-        public static List<string> GetAllApiVersions(ApplicationPartManager partManager)
+        public List<string> GetAllApiVersions(ApplicationPartManager partManager)
         {
             var controllerFeature = new ControllerFeature();
             partManager.PopulateFeature(controllerFeature);
@@ -53,18 +55,35 @@ namespace SwashbuckleAspNetApiVersioningExample
             return versionList;
         }
 
-        public static List<string> GetApiVersionsForController(Type controllerType)
+        public List<string> GetApiVersionsForController(TypeInfo controllerTypeInfo)
         {
             var versionList = new List<string>();
-            var versionAttributes = controllerType.GetTypeInfo().GetCustomAttributes<ApiVersionAttribute>();
+            var versionAttributes = controllerTypeInfo.GetCustomAttributes<ApiVersionAttribute>();
             versionList = versionAttributes.Select(x => x.Versions.FirstOrDefault().ToString()).ToList();
             return versionList;
         }
 
-        //private static IEnumerable<Type> GetSubClasses<T>()
-        //{
+        public void ConfigureSwaggerGen(SwaggerGenOptions options, ApplicationPartManager partManager)
+        {
+            var versions = GetAllApiVersions(partManager);
+            options.DocInclusionPredicate((version, apiDescription) =>
+            {
+                return SetDocInclusions(version, apiDescription);
+            });
 
-        //    return Assembly.GetCallingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(T))).ToList();
-        //}
+            foreach (var version in versions)
+            {
+                options.SwaggerDoc(string.Format($"v{version}"), new Info { Version = version, Title = string.Format($"API V{version}") });
+            }
+        }
+
+        public void ConfigureSwaggerUi(Swashbuckle.AspNetCore.SwaggerUi.SwaggerUiOptions c, ApplicationPartManager partManager)
+        {
+            var versions = GetAllApiVersions(partManager);
+            foreach (var version in versions)
+            {
+                c.SwaggerEndpoint(string.Format($"/swagger/v{version}/swagger.json"), string.Format($"V{version} Docs"));
+            }
+        }
     }
 }
