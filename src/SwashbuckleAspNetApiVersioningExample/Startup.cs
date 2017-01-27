@@ -24,8 +24,7 @@ namespace SwashbuckleAspNetApiVersioningExample
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();            
 
-            Configuration = builder.Build();            
-            //_versions = SwaggerVersioning.GetAllApiVersions();            
+            Configuration = builder.Build();                       
         }
 
         public IConfigurationRoot Configuration { get; }
@@ -40,17 +39,9 @@ namespace SwashbuckleAspNetApiVersioningExample
 
             var mvc = services.AddMvc(c =>            
                 c.Conventions.Add(new ApiExplorerGroupPerVersionConvention())                
-            );
-                       
-
-            var controllerFeature = new ControllerFeature();
-            mvc.PartManager.PopulateFeature(controllerFeature);
-
-            foreach (var controller in controllerFeature.Controllers)
-            {
-            }
-
-            _versions = SwaggerVersioning.GetAllApiVersions();
+            );                     
+                      
+            _versions = SwaggerVersioning.GetAllApiVersions(mvc.PartManager);
 
             services.AddApiVersioning();                                  
 

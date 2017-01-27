@@ -29,4 +29,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="1.0.0-rc1" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SwashbuckleAspNetVersioningShim\SwashbuckleAspNetVersioningShim.csproj" />
+  </ItemGroup>
 </Project>
